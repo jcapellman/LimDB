@@ -7,8 +7,6 @@ namespace LimDB.lib
 {
     public class LimDbContext<T>(BaseStorageSource storageSource) where T : BaseObject
     {
-        private readonly BaseStorageSource _storageSource = storageSource;
-
         private List<T> _dbObjects = new();
 
         public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource)
@@ -21,7 +19,7 @@ namespace LimDB.lib
 
         private async Task InitializeAsync()
         {
-            var strDb = await _storageSource.GetDbAsync();
+            var strDb = await storageSource.GetDbAsync();
 
             var tempDb = JsonSerializer.Deserialize<List<T>>(strDb);
 
