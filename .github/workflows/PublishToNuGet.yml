@@ -17,23 +17,19 @@ env:
   NuGetDirectory: ${{ github.workspace}}/nuget
 
 jobs:
-  build:
-    runs-on: ubuntu-18.04
-    name: Update NuGet package
+  create_nuget:
+    runs-on: ubuntu-latest
     steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup .NET Core @ Latest
-        uses: actions/setup-dotnet@v3
-        with:
-          source-url: https://nuget.pkg.github.com/<organization>/index.json
-
-      - name: Build solution and generate NuGet package
-        run: |  
-          cd <project>
-          dotnet pack -c Release -o out  
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+    - run: dotnet pack --configuration Release --output ${{ env.NuGetDirectory }}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: nuget
+        if-no-files-found: error
+        retention-days: 7
+        path: ${{ env.NuGetDirectory }}/*.nupkg
 
   run_test:
       runs-on: ubuntu-latest
