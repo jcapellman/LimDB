@@ -25,8 +25,8 @@ jobs:
   create_nuget:
     runs-on: ubuntu-latest
     steps:
-    - uses: Kaven-Universe/github-action-current-date-time@v1
     - name: Get current date
+    - uses: Kaven-Universe/github-action-current-date-time@v1
       id: date
       with:
         format: "YYYY.MM"
