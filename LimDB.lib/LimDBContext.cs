@@ -34,6 +34,11 @@ namespace LimDB.lib
             return await CreateAsync(lss);
         }
 
+        /// <summary>
+        /// Creates a LimDbContext from a custom BaseStorageSource - if you're just using Http or Local, use the wrappers
+        /// </summary>
+        /// <param name="storageSource">Custom BaseStorageSource</param>
+        /// <returns>LimDbContext</returns>
         public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource)
         {
             var dbContext = new LimDbContext<T>(storageSource);

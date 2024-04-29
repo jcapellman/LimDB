@@ -18,6 +18,21 @@ namespace LimDB.Tests.Sources
 
             Assert.IsNotNull(posts);
             Assert.IsTrue(posts.Any());
+
+            var singlePost = dbContext.GetOne();
+
+            Assert.IsNotNull(singlePost);
+
+            var id = singlePost.Id;
+
+            singlePost = dbContext.GetOneById(id);
+
+            Assert.IsNotNull(singlePost);
+
+            posts = dbContext.GetMany(a => a.Active && a.Modified > DateTime.MinValue && a.Created > DateTime.MinValue);
+
+            Assert.IsNotNull(posts);
+            Assert.IsTrue(posts.Any());
         }
 
         [TestMethod]
