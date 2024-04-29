@@ -15,7 +15,7 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_NOLOGO: true
   NuGetDirectory: ${{ github.workspace}}/nuget
-  PR_NUMBER: ${{ github.event.number }}
+  PR_NUMBER: ${{ github.run_attempt }}
   
 defaults:
   run:
