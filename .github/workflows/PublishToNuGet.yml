@@ -25,9 +25,9 @@ jobs:
   create_nuget:
     runs-on: ubuntu-latest
     steps:
+    - uses: Kaven-Universe/github-action-current-date-time@v1
     - name: Get current date
       id: date
-    - uses: Kaven-Universe/github-action-current-date-time@v1
       with:
         format: "YYYY.MM"
     - uses: actions/checkout@v4
