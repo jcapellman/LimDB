@@ -81,5 +81,36 @@ namespace LimDB.lib
 
             return await storageSource.WriteDbAsync(_dbObjects);
         }
+
+        /// <summary>
+        /// Inserts an object
+        /// </summary>
+        /// <param name="obj">Object to put into the database</param>
+        /// <returns>Id of the new Object</returns>
+        public async Task<int?> Insert(T obj)
+        {
+            if (_dbObjects is null)
+            {
+                return null;
+            }
+
+            var id = 0;
+
+            lock (_dbObjects)
+            {
+                id = _dbObjects.Max(a => a.Id) + 1;
+
+                obj.Id = id;
+                obj.Active = true;
+                obj.Created = DateTime.Now;
+                obj.Modified = DateTime.Now;
+
+                _dbObjects.Add(obj);
+            }
+
+            var result = await storageSource.WriteDbAsync(_dbObjects);
+
+            return result ? id : null;
+        }
     }
 }

@@ -47,7 +47,7 @@ namespace LimDB.Tests.Sources
         }
 
         [TestMethod]
-        public async Task ValidFile_DeleteTest()
+        public async Task ValidFile_InsertAndDeleteTest()
         {
             var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
 
@@ -62,6 +62,12 @@ namespace LimDB.Tests.Sources
             var result = await dbContext.DeleteByIdAsync(id);
 
             Assert.IsTrue(result);
+
+            var newId = await dbContext.Insert(post);
+
+            Assert.IsNotNull(newId);
+
+            Assert.IsTrue(id != newId.Value);
         }
 
         [TestMethod]
