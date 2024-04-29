@@ -2,7 +2,7 @@
 
 namespace LimDB.lib.Sources
 {
-    public class HttpStorageSource(string dbFileName) : BaseStorageSource(dbFileName)
+    public class HttpStorageSource(string url) : BaseStorageSource(url)
     {
         public override async Task<string> GetDbAsync()
         {
