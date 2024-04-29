@@ -27,13 +27,13 @@ jobs:
     steps:
     - uses: Kaven-Universe/github-action-current-date-time@v1
       name: Get current date
-      id: date
+      id: currentdate
       with:
         format: "YYYY.MM"
     - uses: actions/checkout@v4
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
-    - run: dotnet build LimDB.lib/LimDB.lib.csproj -c Release /p:${{ date }}.${{ env.PR_NUMBER }}
+    - run: dotnet build LimDB.lib/LimDB.lib.csproj -c Release /p:${{ steps.currentdate }}.${{ env.PR_NUMBER }}
     - run: dotnet pack LimDB.lib/LimDB.lib.csproj -c Release --output ${{ env.NuGetDirectory }}
     - uses: actions/upload-artifact@v4
       with:
