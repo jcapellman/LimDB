@@ -7,10 +7,12 @@ namespace LimDB.Tests.Sources
     [TestClass]
     public class LocalStorageSourceTests
     {
+        private string TestDBName = Path.Combine(AppContext.BaseDirectory, $"Data{Path.DirectorySeparatorChar.ToString()}", "db.file");
+
         [TestMethod]
         public async Task ValidFile()
         {
-            var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, $"Data{Path.DirectorySeparatorChar.ToString()}", "db.file"));
+            var lss = new LocalStorageSource(TestDBName);
 
             var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
 
@@ -38,7 +40,7 @@ namespace LimDB.Tests.Sources
         [TestMethod]
         public async Task WrapperValidFile()
         {
-            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(TestDBName);
 
             var posts = dbContext.GetMany();
 
@@ -49,7 +51,7 @@ namespace LimDB.Tests.Sources
         [TestMethod]
         public async Task ValidFile_InsertAndDeleteTest()
         {
-            var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
+            var lss = new LocalStorageSource(TestDBName);
 
             var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
 
@@ -73,7 +75,7 @@ namespace LimDB.Tests.Sources
         [TestMethod]
         public async Task ValidFile_UpdateTest()
         {
-            var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
+            var lss = new LocalStorageSource(TestDBName);
 
             var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
 
