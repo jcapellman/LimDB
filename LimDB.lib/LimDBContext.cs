@@ -61,5 +61,25 @@ namespace LimDB.lib
             expression is null ? _dbObjects?.FirstOrDefault() : _dbObjects?.FirstOrDefault(expression);
 
         public T? GetOneById(int id) => _dbObjects?.FirstOrDefault(a => a.Id == id);
+
+        /// <summary>
+        /// Deletes an object by the Id
+        /// </summary>
+        /// <param name="id">id of the object to remove</param>
+        /// <returns>True if successful, false otherwise</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public async Task<bool> DeleteByIdAsync(int id)
+        {
+            var obj = GetOneById(id) ?? throw new ArgumentException($"{id} was not found");
+
+            _dbObjects?.Remove(obj);
+
+            if (_dbObjects is null)
+            {
+                return false;
+            }
+
+            return await storageSource.WriteDbAsync(_dbObjects);
+        }
     }
 }

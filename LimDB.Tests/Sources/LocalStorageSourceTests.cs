@@ -47,6 +47,24 @@ namespace LimDB.Tests.Sources
         }
 
         [TestMethod]
+        public async Task ValidFile_DeleteTest()
+        {
+            var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
+
+            var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
+
+            var post = dbContext.GetOne();
+
+            Assert.IsNotNull(post);
+            
+            var id = post.Id;
+
+            var result = await dbContext.DeleteByIdAsync(id);
+
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
         [ExpectedException(typeof(FileNotFoundException))]
         public async Task InvalidFile()
         {

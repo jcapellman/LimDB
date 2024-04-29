@@ -12,5 +12,10 @@ namespace LimDB.lib.Sources
 
             return await response.Content.ReadAsStringAsync();
         }
+
+        protected override Task<bool> WriteAsync(string json)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
