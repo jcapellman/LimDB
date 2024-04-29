@@ -10,7 +10,7 @@ namespace LimDB.Tests.Sources
         [TestMethod]
         public async Task ValidFile()
         {
-            var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
+            var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, "Data", Path.DirectorySeparatorChar.ToString(), "db.file"));
 
             var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
 
