@@ -63,12 +63,50 @@ namespace LimDB.Tests.Sources
 
             Assert.IsTrue(result);
 
-            var newId = await dbContext.Insert(post);
+            var newId = await dbContext.InsertAsync(post);
 
             Assert.IsNotNull(newId);
 
             Assert.IsTrue(id != newId.Value);
         }
+
+        [TestMethod]
+        public async Task ValidFile_UpdateTest()
+        {
+            var lss = new LocalStorageSource(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
+
+            var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
+
+            var newPost = new Posts
+            {
+                Title = "TestDo " + DateTime.Now,
+                Body = "Testing",
+                Category = "test",
+                PostDate = DateTime.Now,
+                URL = "test"
+            };
+
+            var newId = await dbContext.InsertAsync(newPost);
+
+            Assert.IsNotNull(newId);
+
+            var copyPost = dbContext.GetOneById(newId.Value);
+
+            Assert.IsNotNull(copyPost);
+
+            copyPost.Title = "Wrongo";
+
+            var result = await dbContext.UpdateAsync(copyPost);
+
+            Assert.IsTrue(result);
+
+            var retPost = dbContext.GetOneById(newId.Value);
+
+            Assert.IsNotNull(retPost);
+
+            Assert.AreEqual(copyPost.Title, retPost.Title);
+        }
+
 
         [TestMethod]
         [ExpectedException(typeof(FileNotFoundException))]

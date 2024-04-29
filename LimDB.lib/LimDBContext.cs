@@ -87,7 +87,7 @@ namespace LimDB.lib
         /// </summary>
         /// <param name="obj">Object to put into the database</param>
         /// <returns>Id of the new Object</returns>
-        public async Task<int?> Insert(T obj)
+        public async Task<int?> InsertAsync(T obj)
         {
             if (_dbObjects is null)
             {
@@ -111,6 +111,33 @@ namespace LimDB.lib
             var result = await storageSource.WriteDbAsync(_dbObjects);
 
             return result ? id : null;
+        }
+
+        /// <summary>
+        /// Updates the object
+        /// </summary>
+        /// <param name="obj">Object to update</param>
+        /// <returns>True if successful, false otherwise</returns>
+        public async Task<bool> UpdateAsync(T obj)
+        {
+            if (_dbObjects is null)
+            {
+                return false;
+            }
+
+            lock (_dbObjects)
+            {
+                var index = _dbObjects.FindIndex(a => a.Id == obj.Id);
+
+                if (index == -1)
+                {
+                    return false;
+                }
+
+                _dbObjects[index] = obj;
+            }
+
+            return await storageSource.WriteDbAsync(_dbObjects);
         }
     }
 }
