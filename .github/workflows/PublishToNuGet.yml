@@ -24,6 +24,7 @@ defaults:
 jobs:
   create_nuget:
     runs-on: ubuntu-latest
+    needs: [ run_test ]
     steps:
     - name: Build Version String
       run: echo "VERSION=2024.4.${{ env.PR_NUMBER }}" >> $env:GITHUB_ENV
@@ -50,7 +51,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [ run_test,create_nuget ]
+    needs: [ create_nuget ]
     steps:
     - uses: actions/download-artifact@v4
       with:
