@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: Kaven-Universe/github-action-current-date-time@v1
-    - name: Get current date
+      name: Get current date
       id: date
       with:
         format: "YYYY.MM"
