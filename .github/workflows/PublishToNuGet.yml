@@ -31,7 +31,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
     - run: dotnet build LimDB.lib/LimDB.lib.csproj -c Release /p:Version=${{ env.VERSION }}
-    - run: dotnet pack LimDB.lib/LimDB.lib.csproj -c Release --output ${{ env.NuGetDirectory }}
+    - run: dotnet pack LimDB.lib/LimDB.lib.csproj -c Release /p:Version=${{ env.VERSION }} --output ${{ env.NuGetDirectory }}
     - uses: actions/upload-artifact@v4
       with:
         name: nuget
@@ -50,7 +50,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [ run_test ]
+    needs: [ run_test,create_nuget ]
     steps:
     - uses: actions/download-artifact@v4
       with:
