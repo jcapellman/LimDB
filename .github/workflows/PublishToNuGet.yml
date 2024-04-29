@@ -32,7 +32,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
     - run: |
-       echo PR_NUMBER='$CURRENT_DATE'.'${{ env.PR_NUMBER }}'
+       echo PR_NUMBER=$CURRENT_DATE.'${{ env.PR_NUMBER }}'
        dotnet build LimDB.lib/LimDB.lib.csproj -c Release /p:${{ env.PR_NUMBER }}
     - run: dotnet pack LimDB.lib/LimDB.lib.csproj -c Release --output ${{ env.NuGetDirectory }}
     - uses: actions/upload-artifact@v4
