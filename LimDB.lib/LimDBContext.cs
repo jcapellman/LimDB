@@ -22,6 +22,18 @@ namespace LimDB.lib
             return await CreateAsync(hss);
         }
 
+        /// <summary>
+        /// Creates a LimDbContext from a Local Storage Source
+        /// </summary>
+        /// <param name="dbFileName">Full Path to the Db Filename</param>
+        /// <returns>LimDbContext</returns>
+        public static async Task<LimDbContext<T>> CreateFromLocalStorageSourceAsync(string dbFileName)
+        {
+            var lss = new LocalStorageSource(dbFileName);
+
+            return await CreateAsync(lss);
+        }
+
         public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource)
         {
             var dbContext = new LimDbContext<T>(storageSource);

@@ -21,6 +21,17 @@ namespace LimDB.Tests.Sources
         }
 
         [TestMethod]
+        public async Task WrapperValidFile()
+        {
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(Path.Combine(AppContext.BaseDirectory, @"Data\", "db.file"));
+
+            var posts = dbContext.GetMany();
+
+            Assert.IsNotNull(posts);
+            Assert.IsTrue(posts.Any());
+        }
+
+        [TestMethod]
         [ExpectedException(typeof(FileNotFoundException))]
         public async Task InvalidFile()
         {
