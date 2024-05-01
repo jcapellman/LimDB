@@ -15,47 +15,50 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_NOLOGO: true
   NuGetDirectory: ${{ github.workspace}}/nuget
-
+  PR_NUMBER: ${{ github.run_number }}
+  
+defaults:
+  run:
+    shell: pwsh
+    
 jobs:
-  build:
-    runs-on: ubuntu-18.04
-    name: Update NuGet package
+  create_nuget:
+    runs-on: ubuntu-latest
+    needs: [ run_test ]
     steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v1
-
-      - name: Setup .NET Core @ Latest
-        uses: actions/setup-dotnet@v1
-        with:
-          source-url: https://nuget.pkg.github.com/<organization>/index.json
-
-      - name: Build solution and generate NuGet package
-        run: |  
-          cd <project>
-          dotnet pack -c Release -o out  
+    - name: Build Version String
+      run: echo "VERSION=2024.4.${{ env.PR_NUMBER }}" >> $env:GITHUB_ENV
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+    - run: dotnet build LimDB.lib/LimDB.lib.csproj -c Release /p:Version=${{ env.VERSION }}
+    - run: dotnet pack LimDB.lib/LimDB.lib.csproj -c Release /p:Version=${{ env.VERSION }} --output ${{ env.NuGetDirectory }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: nuget
+        if-no-files-found: error
+        retention-days: 7
+        path: ${{ env.NuGetDirectory }}/*.nupkg
 
   run_test:
       runs-on: ubuntu-latest
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
       - name: Run tests
         run: dotnet test --configuration Release
 
   deploy:
-    # Publish only when creating a release
-    if: github.event_name == 'release'
     runs-on: ubuntu-latest
-    needs: [ run_test ]
+    needs: [ create_nuget ]
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4
       with:
         name: nuget
         path: ${{ env.NuGetDirectory }}
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
     - name: Publish NuGet package
       run: |
         foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
