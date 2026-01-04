@@ -1,14 +1,26 @@
 ﻿using System.Text.Json;
-
 using LimDB.lib.Objects.Base;
 using LimDB.lib.Sources;
 using LimDB.lib.Sources.Base;
 
 namespace LimDB.lib
 {
-    public class LimDbContext<T>(BaseStorageSource storageSource) where T : BaseObject
+    public class LimDbContext<T> where T : BaseObject
     {
+        private static readonly JsonSerializerOptions SerializerOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        private readonly BaseStorageSource _storageSource;
+        private readonly Lock _syncRoot = new();
+
         private List<T>? _dbObjects;
+
+        private LimDbContext(BaseStorageSource storageSource)
+        {
+            _storageSource = storageSource;
+        }
 
         /// <summary>
         /// Creates a LimDbContext from an Http Storage Source
@@ -49,18 +61,46 @@ namespace LimDB.lib
 
         private async Task InitializeAsync()
         {
-            var strDb = await storageSource.GetDbAsync() ?? throw new ArgumentException("Database String was null");
-            var tempDb = JsonSerializer.Deserialize<List<T>>(strDb);
+            var strDb = await _storageSource.GetDbAsync() ?? throw new ArgumentException("Database String was null");
+            var tempDb = JsonSerializer.Deserialize<List<T>>(strDb, SerializerOptions);
 
-            _dbObjects = tempDb ?? throw new ArgumentException($"Db was null or empty");
+            _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
         }
 
-        public IEnumerable<T>? GetMany(Func<T, bool>? expression = null) => expression is null ? _dbObjects : _dbObjects?.Where(expression);
+        public IEnumerable<T>? GetMany(Func<T, bool>? expression = null)
+        {
+            lock (_syncRoot)
+            {
+                if (_dbObjects is null)
+                {
+                    return null;
+                }
 
-        public T? GetOne(Func<T, bool>? expression = null) =>
-            expression is null ? _dbObjects?.FirstOrDefault() : _dbObjects?.FirstOrDefault(expression);
+                var query = expression is null ? _dbObjects : _dbObjects.Where(expression);
+                return [.. query];
+            }
+        }
 
-        public T? GetOneById(int id) => _dbObjects?.FirstOrDefault(a => a.Id == id);
+        public T? GetOne(Func<T, bool>? expression = null)
+        {
+            lock (_syncRoot)
+            {
+                if (_dbObjects is null)
+                {
+                    return null;
+                }
+
+                return expression is null ? _dbObjects.FirstOrDefault() : _dbObjects.FirstOrDefault(expression);
+            }
+        }
+
+        public T? GetOneById(int id)
+        {
+            lock (_syncRoot)
+            {
+                return _dbObjects?.FirstOrDefault(a => a.Id == id);
+            }
+        }
 
         /// <summary>
         /// Deletes an object by the Id
@@ -70,16 +110,22 @@ namespace LimDB.lib
         /// <exception cref="ArgumentException"></exception>
         public async Task<bool> DeleteByIdAsync(int id)
         {
-            var obj = GetOneById(id) ?? throw new ArgumentException($"{id} was not found");
+            List<T> snapshot;
 
-            _dbObjects?.Remove(obj);
-
-            if (_dbObjects is null)
+            lock (_syncRoot)
             {
-                return false;
+                if (_dbObjects is null)
+                {
+                    return false;
+                }
+
+                var obj = _dbObjects.FirstOrDefault(a => a.Id == id) ?? throw new ArgumentException($"{id} was not found");
+
+                _dbObjects.Remove(obj);
+                snapshot = [.. _dbObjects];
             }
 
-            return await storageSource.WriteDbAsync(_dbObjects);
+            return await _storageSource.WriteDbAsync(snapshot);
         }
 
         /// <summary>
@@ -89,16 +135,17 @@ namespace LimDB.lib
         /// <returns>Id of the new Object</returns>
         public async Task<int?> InsertAsync(T obj)
         {
-            if (_dbObjects is null)
-            {
-                return null;
-            }
+            List<T> snapshot;
+            int id;
 
-            var id = 0;
-
-            lock (_dbObjects)
+            lock (_syncRoot)
             {
-                id = _dbObjects.Max(a => a.Id) + 1;
+                if (_dbObjects is null)
+                {
+                    return null;
+                }
+
+                id = _dbObjects.Count == 0 ? 1 : _dbObjects.Max(a => a.Id) + 1;
 
                 obj.Id = id;
                 obj.Active = true;
@@ -106,9 +153,10 @@ namespace LimDB.lib
                 obj.Modified = DateTime.Now;
 
                 _dbObjects.Add(obj);
+                snapshot = [.. _dbObjects];
             }
 
-            var result = await storageSource.WriteDbAsync(_dbObjects);
+            var result = await _storageSource.WriteDbAsync(snapshot);
 
             return result ? id : null;
         }
@@ -120,13 +168,15 @@ namespace LimDB.lib
         /// <returns>True if successful, false otherwise</returns>
         public async Task<bool> UpdateAsync(T obj)
         {
-            if (_dbObjects is null)
-            {
-                return false;
-            }
+            List<T> snapshot;
 
-            lock (_dbObjects)
+            lock (_syncRoot)
             {
+                if (_dbObjects is null)
+                {
+                    return false;
+                }
+
                 var index = _dbObjects.FindIndex(a => a.Id == obj.Id);
 
                 if (index == -1)
@@ -135,9 +185,10 @@ namespace LimDB.lib
                 }
 
                 _dbObjects[index] = obj;
+                snapshot = [.. _dbObjects];
             }
 
-            return await storageSource.WriteDbAsync(_dbObjects);
+            return await _storageSource.WriteDbAsync(snapshot);
         }
     }
 }

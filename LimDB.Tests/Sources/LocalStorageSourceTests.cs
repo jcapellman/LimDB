@@ -1,3 +1,4 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using LimDB.lib;
 using LimDB.lib.Sources;
 using LimDB.Tests.Objects;
@@ -8,6 +9,39 @@ namespace LimDB.Tests.Sources
     public class LocalStorageSourceTests
     {
         private readonly string _testDbName = Path.Combine(AppContext.BaseDirectory, $"Data{Path.DirectorySeparatorChar}", "db.file");
+        private readonly List<string> _tempFiles = new();
+
+        private string CreateTempDb(string? content = null)
+        {
+            var tempPath = Path.Combine(Path.GetTempPath(), $"LimDb_{Guid.NewGuid():N}.json");
+
+            if (content is null)
+            {
+                File.Copy(_testDbName, tempPath, true);
+            }
+            else
+            {
+                File.WriteAllText(tempPath, content);
+            }
+
+            _tempFiles.Add(tempPath);
+
+            return tempPath;
+        }
+
+        [TestCleanup]
+        public void CleanupTempFiles()
+        {
+            foreach (var file in _tempFiles)
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
+
+            _tempFiles.Clear();
+        }
 
         [TestMethod]
         public async Task ValidFile()
@@ -111,12 +145,122 @@ namespace LimDB.Tests.Sources
 
 
         [TestMethod]
-        [ExpectedException(typeof(FileNotFoundException))]
+        public async Task InsertAsync_AssignsIdWhenDbEmpty()
+        {
+            var tempDb = CreateTempDb("[]");
+
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+
+            var post = new Posts
+            {
+                Title = "Empty Insert",
+                Body = "Body",
+                Category = "General",
+                URL = "https://example.com",
+                PostDate = DateTime.UtcNow
+            };
+
+            var newId = await dbContext.InsertAsync(post);
+
+            Assert.AreEqual(1, newId);
+
+            var reloadContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var storedPost = reloadContext.GetOneById(1);
+
+            Assert.IsNotNull(storedPost);
+            Assert.AreEqual(post.Title, storedPost.Title);
+        }
+
+        [TestMethod]
+        public async Task GetMany_ReturnsCopyOfData()
+        {
+            var tempDb = CreateTempDb();
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+
+            var firstCall = dbContext.GetMany()?.ToList();
+
+            Assert.IsNotNull(firstCall);
+            Assert.IsTrue(firstCall.Count > 0);
+
+            firstCall.Clear();
+
+            var secondCall = dbContext.GetMany();
+
+            Assert.IsNotNull(secondCall);
+            Assert.IsTrue(secondCall.Any());
+        }
+
+        [TestMethod]
+        public async Task InitializeAsync_DeserializesCamelCaseJson()
+        {
+            var camelCaseJson = """
+[
+  {
+    "id": 1,
+    "title": "Camel Case",
+    "body": "Body",
+    "category": "general",
+    "url": "https://example.com",
+    "postDate": "2024-01-01T00:00:00Z",
+    "active": true,
+    "created": "2024-01-01T00:00:00Z",
+    "modified": "2024-01-01T00:00:00Z"
+  }
+]
+""";
+
+            var tempDb = CreateTempDb(camelCaseJson);
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+
+            var post = dbContext.GetOne();
+
+            Assert.IsNotNull(post);
+            Assert.AreEqual("Camel Case", post.Title);
+        }
+
+        [TestMethod]
+        public async Task InsertAsync_IsThreadSafe()
+        {
+            var tempDb = CreateTempDb("[]");
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+
+            var insertTasks = Enumerable.Range(0, 10)
+                .Select(i => dbContext.InsertAsync(new Posts
+                {
+                    Title = $"Threaded {i}",
+                    Body = "Body",
+                    Category = "General",
+                    URL = "https://example.com",
+                    PostDate = DateTime.UtcNow.AddMinutes(i)
+                }))
+                .ToArray();
+
+            var ids = await Task.WhenAll(insertTasks);
+
+            Assert.IsTrue(ids.All(id => id.HasValue));
+            Assert.AreEqual(10, ids.Select(id => id!.Value).Distinct().Count());
+
+            var reloadContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var posts = reloadContext.GetMany();
+
+            Assert.IsNotNull(posts);
+            Assert.AreEqual(10, posts.Count());
+        }
+
+        [TestMethod]
         public async Task InvalidFile()
         {
             var lss = new LocalStorageSource("testo.file");
 
-            var _ = await LimDbContext<Posts>.CreateAsync(lss);
+            try
+            {
+                _ = await LimDbContext<Posts>.CreateAsync(lss);
+                Assert.Fail("Expected FileNotFoundException was not thrown.");
+            }
+            catch (FileNotFoundException)
+            {
+                // success, expected exception thrown
+            }
         }
     }
 }
