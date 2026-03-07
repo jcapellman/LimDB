@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using LimDB.lib.Json;
 using LimDB.lib.Objects.Base;
@@ -54,8 +55,15 @@ namespace LimDB.lib
         /// <returns>LimDbContext</returns>
         public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource)
         {
+            // Try to get type info from source-generated context first
             var typeInfo = LimDbJsonContext.Default.GetTypeInfo(typeof(List<T>));
-            _jsonTypeInfo = typeInfo as JsonTypeInfo<List<T>> ?? throw new InvalidOperationException("Could not get JSON type info");
+
+            // If the specific type isn't registered in source generation, typeInfo will be null
+            // In that case, we'll use reflection-based serialization as fallback
+            if (typeInfo is JsonTypeInfo<List<T>> jsonTypeInfo)
+            {
+                _jsonTypeInfo = jsonTypeInfo;
+            }
 
             var dbContext = new LimDbContext<T>(storageSource);
             await dbContext.InitializeAsync();
@@ -63,12 +71,16 @@ namespace LimDB.lib
             return dbContext;
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
         private async Task InitializeAsync()
         {
             var strDb = await _storageSource.GetDbAsync() ?? throw new ArgumentException("Database String was null");
+
+            // Use source generation if available, otherwise fall back to reflection
             var tempDb = _jsonTypeInfo != null 
                 ? JsonSerializer.Deserialize(strDb, _jsonTypeInfo)
-                : throw new InvalidOperationException("JSON type info not initialized");
+                : JsonSerializer.Deserialize<List<T>>(strDb, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
             _idIndex = _dbObjects.ToDictionary(obj => obj.Id);
@@ -143,11 +155,6 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            if (_jsonTypeInfo == null)
-            {
-                throw new InvalidOperationException("JSON type info not initialized");
-            }
-
             return await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
         }
 
@@ -180,11 +187,6 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            if (_jsonTypeInfo == null)
-            {
-                throw new InvalidOperationException("JSON type info not initialized");
-            }
-
             var result = await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
 
             return result ? id : null;
@@ -215,11 +217,6 @@ namespace LimDB.lib
                 _dbObjects[index] = obj;
                 _idIndex[obj.Id] = obj;
                 snapshot = [.. _dbObjects];
-            }
-
-            if (_jsonTypeInfo == null)
-            {
-                throw new InvalidOperationException("JSON type info not initialized");
             }
 
             return await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);

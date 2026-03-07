@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using LimDB.lib.Common;
 
@@ -12,9 +13,14 @@ namespace LimDB.lib.Sources.Base
 
         protected abstract Task<bool> WriteAsync(string json);
 
-        public async Task<bool> WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>> jsonTypeInfo)
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
+        public async Task<bool> WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>>? jsonTypeInfo)
         {
-            var json = JsonSerializer.Serialize(objects, jsonTypeInfo);
+            // Use source generation if available, otherwise fall back to reflection
+            var json = jsonTypeInfo != null
+                ? JsonSerializer.Serialize(objects, jsonTypeInfo)
+                : JsonSerializer.Serialize(objects, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, WriteIndented = true });
 
             return await WriteAsync(json);
         }
