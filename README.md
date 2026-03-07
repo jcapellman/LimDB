@@ -9,8 +9,6 @@ LimDB uses dictionary-based indexing for O(1) ID lookups, providing constant-tim
 - **Sub-nanosecond** GetOneById operations
 - Thread-safe concurrent operations
 
-See [LimDB.Benchmarks](LimDB.Benchmarks/BENCHMARK_GUIDE.md) for detailed performance benchmarks.
-
 ## Dependencies
 Given the goal of being lightweight and versatile, the database has no dependencies outside of .NET 10. 
 
