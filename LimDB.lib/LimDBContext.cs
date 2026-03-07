@@ -208,12 +208,12 @@ namespace LimDB.lib
                     return false;
                 }
 
-                if (!_idIndex.ContainsKey(obj.Id))
+                if (!_idIndex.TryGetValue(obj.Id, out var existingObj))
                 {
                     return false;
                 }
 
-                var index = _dbObjects.FindIndex(a => a.Id == obj.Id);
+                var index = _dbObjects.IndexOf(existingObj);
                 _dbObjects[index] = obj;
                 _idIndex[obj.Id] = obj;
                 snapshot = [.. _dbObjects];
