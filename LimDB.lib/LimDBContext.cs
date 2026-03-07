@@ -11,7 +11,7 @@ namespace LimDB.lib
 {
     public class LimDbContext<T> where T : BaseObject
     {
-        private static JsonTypeInfo<List<T>>? _jsonTypeInfo;
+        private static JsonTypeInfo<List<T>> _jsonTypeInfo = null!;
 
         private readonly BaseStorageSource _storageSource;
         private readonly Lock _syncRoot = new();
@@ -71,11 +71,15 @@ namespace LimDB.lib
             var context = jsonContext ?? LimDbJsonContext.Default;
             var typeInfo = context.GetTypeInfo(typeof(List<T>));
 
-            // If the specific type isn't registered in source generation, typeInfo will be null
-            if (typeInfo is JsonTypeInfo<List<T>> jsonTypeInfo)
+            // Enforce AOT-only: type must be registered in source generation
+            if (typeInfo is not JsonTypeInfo<List<T>> jsonTypeInfo)
             {
-                _jsonTypeInfo = jsonTypeInfo;
+                throw new InvalidOperationException(
+                    $"Type '{typeof(T).Name}' is not registered for AOT serialization. " +
+                    $"Add [JsonSerializable(typeof(List<{typeof(T).Name}>))] to your JsonSerializerContext.");
             }
+
+            _jsonTypeInfo = jsonTypeInfo;
 
             var dbContext = new LimDbContext<T>(storageSource);
             await dbContext.InitializeAsync();
@@ -87,13 +91,7 @@ namespace LimDB.lib
         {
             var strDb = await _storageSource.GetDbAsync() ?? throw new ArgumentException("Database String was null");
 
-            if (_jsonTypeInfo is null)
-            {
-                throw new InvalidOperationException(
-                    $"Type '{typeof(T).Name}' is not registered in LimDbJsonContext for AOT deserialization. " +
-                    $"Add [JsonSerializable(typeof(List<{typeof(T).Name}>))] to LimDbJsonContext.cs to enable AOT support.");
-            }
-
+            // _jsonTypeInfo is guaranteed non-null by CreateAsync contract
             var tempDb = JsonSerializer.Deserialize(strDb, _jsonTypeInfo);
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");

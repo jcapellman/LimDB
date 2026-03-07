@@ -13,15 +13,8 @@ namespace LimDB.lib.Sources.Base
 
         protected abstract Task<bool> WriteAsync(ReadOnlyMemory<byte> jsonBytes);
 
-        public async Task<bool> WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>>? jsonTypeInfo)
+        public async Task<bool> WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>> jsonTypeInfo)
         {
-            if (jsonTypeInfo is null)
-            {
-                throw new InvalidOperationException(
-                    $"Type '{typeof(T).Name}' is not registered in LimDbJsonContext for AOT serialization. " +
-                    $"Add [JsonSerializable(typeof(List<{typeof(T).Name}>))] to LimDbJsonContext.cs to enable AOT support.");
-            }
-
             var bufferWriter = new ArrayPoolBufferWriter();
             try
             {
