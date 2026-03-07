@@ -4,11 +4,11 @@ namespace LimDB.lib.Sources
 {
     public class HttpStorageSource(string url) : BaseStorageSource(url)
     {
+        private static readonly HttpClient HttpClient = new();
+
         public override async Task<string> GetDbAsync()
         {
-            var httpClient = new HttpClient();
-
-            var response = await httpClient.GetAsync(DbFileName);
+            var response = await HttpClient.GetAsync(DbFileName);
 
             return await response.Content.ReadAsStringAsync();
         }

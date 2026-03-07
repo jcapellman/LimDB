@@ -16,6 +16,7 @@ namespace LimDB.lib
         private readonly Lock _syncRoot = new();
 
         private List<T>? _dbObjects;
+        private Dictionary<int, T>? _idIndex;
 
         private LimDbContext(BaseStorageSource storageSource)
         {
@@ -65,6 +66,7 @@ namespace LimDB.lib
             var tempDb = JsonSerializer.Deserialize<List<T>>(strDb, SerializerOptions);
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
+            _idIndex = _dbObjects.ToDictionary(obj => obj.Id);
         }
 
         public IEnumerable<T>? GetMany(Func<T, bool>? expression = null)
@@ -98,7 +100,7 @@ namespace LimDB.lib
         {
             lock (_syncRoot)
             {
-                return _dbObjects?.FirstOrDefault(a => a.Id == id);
+                return _idIndex?.TryGetValue(id, out var obj) == true ? obj : null;
             }
         }
 
@@ -114,14 +116,18 @@ namespace LimDB.lib
 
             lock (_syncRoot)
             {
-                if (_dbObjects is null)
+                if (_dbObjects is null || _idIndex is null)
                 {
                     return false;
                 }
 
-                var obj = _dbObjects.FirstOrDefault(a => a.Id == id) ?? throw new ArgumentException($"{id} was not found");
+                if (!_idIndex.TryGetValue(id, out var obj))
+                {
+                    throw new ArgumentException($"{id} was not found");
+                }
 
                 _dbObjects.Remove(obj);
+                _idIndex.Remove(id);
                 snapshot = [.. _dbObjects];
             }
 
@@ -140,19 +146,20 @@ namespace LimDB.lib
 
             lock (_syncRoot)
             {
-                if (_dbObjects is null)
+                if (_dbObjects is null || _idIndex is null)
                 {
                     return null;
                 }
 
-                id = _dbObjects.Count == 0 ? 1 : _dbObjects.Max(a => a.Id) + 1;
+                id = _idIndex.Count == 0 ? 1 : _idIndex.Keys.Max() + 1;
 
                 obj.Id = id;
                 obj.Active = true;
-                obj.Created = DateTime.Now;
-                obj.Modified = DateTime.Now;
+                obj.Created = DateTime.UtcNow;
+                obj.Modified = DateTime.UtcNow;
 
                 _dbObjects.Add(obj);
+                _idIndex[id] = obj;
                 snapshot = [.. _dbObjects];
             }
 

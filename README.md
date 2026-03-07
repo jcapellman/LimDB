@@ -3,6 +3,14 @@
 ## Overview
 LimDB, which stands for Lightweight In-Memory Database is a small project to allow a simple JSON file to power Mobile, Desktop or Web applications where an embedded database like SQLite or LiteDb or a full database like Postgres or MongoDb is overkill. This database is meant for static data, less so with frequently changing data. However, basic CRUD operations are implemented right now. Future Transactions queueing and Transaction Log functionality will be implemented.
 
+## Performance
+LimDB uses dictionary-based indexing for O(1) ID lookups, providing constant-time performance regardless of database size:
+- **Up to 5,930x faster** ID lookups on 10,000 items
+- **Sub-nanosecond** GetOneById operations
+- Thread-safe concurrent operations
+
+See [LimDB.Benchmarks](LimDB.Benchmarks/BENCHMARK_GUIDE.md) for detailed performance benchmarks.
+
 ## Dependencies
 Given the goal of being lightweight and versatile, the database has no dependencies outside of .NET 10. 
 

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>LimDB.Benchmarks.DictionaryVsLinearSearchBenchmarks-20260307-130457</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.7840/25H2/2025Update/HudsonValley2)
+Snapdragon X - X126100 - Qualcomm Oryon CPU 2.96GHz, 1 CPU, 8 logical and 8 physical cores
+.NET SDK 10.0.103
+  [Host]   : .NET 10.0.3 (10.0.3, 10.0.326.7603), Arm64 RyuJIT armv8.0-a
+  ShortRun : .NET 10.0.3 (10.0.3, 10.0.326.7603), Arm64 RyuJIT armv8.0-a
+</code></pre>
+<pre><code>Job=ShortRun  IterationCount=3  LaunchCount=1  
+WarmupCount=3  
+</code></pre>
+
+<table>
+<thead><tr><th>Method                     </th><th>DatasetSize</th><th>Mean    </th><th>Error   </th><th>StdDev</th><th>Ratio</th><th>RatioSD</th><th>Rank</th><th>Allocated</th><th>Alloc Ratio</th>
+</tr>
+</thead><tbody><tr><td>&#39;Dictionary Lookup (TryGetValue)&#39;</td><td>100</td><td>0.6925 ns</td><td>0.0054 ns</td><td>0.0003 ns</td><td>0.04</td><td>0.00</td><td>1</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Linear Search (FirstOrDefault)&#39;</td><td>100</td><td>18.6371 ns</td><td>16.1064 ns</td><td>0.8828 ns</td><td>1.00</td><td>0.06</td><td>2</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Max ID - Dictionary Keys&#39;</td><td>100</td><td>259.9354 ns</td><td>2.2085 ns</td><td>0.1211 ns</td><td>13.97</td><td>0.56</td><td>3</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Max ID - Linear (on objects)&#39;</td><td>100</td><td>281.7712 ns</td><td>156.9608 ns</td><td>8.6036 ns</td><td>15.14</td><td>0.73</td><td>3</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Dictionary Lookup (TryGetValue)&#39;</td><td>1000</td><td>22.3171 ns</td><td>12.7261 ns</td><td>0.6976 ns</td><td>0.11</td><td>0.00</td><td>1</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Linear Search (FirstOrDefault)&#39;</td><td>1000</td><td>200.5387 ns</td><td>5.6736 ns</td><td>0.3110 ns</td><td>1.00</td><td>0.00</td><td>2</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Max ID - Dictionary Keys&#39;</td><td>1000</td><td>2,664.0185 ns</td><td>19.6789 ns</td><td>1.0787 ns</td><td>13.28</td><td>0.02</td><td>3</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Max ID - Linear (on objects)&#39;</td><td>1000</td><td>2,951.3297 ns</td><td>12.5288 ns</td><td>0.6867 ns</td><td>14.72</td><td>0.02</td><td>3</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Dictionary Lookup (TryGetValue)&#39;</td><td>10000</td><td>0.7989 ns</td><td>0.1904 ns</td><td>0.0104 ns</td><td>0.000</td><td>0.00</td><td>1</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Linear Search (FirstOrDefault)&#39;</td><td>10000</td><td>4,744.3860 ns</td><td>18.9220 ns</td><td>1.0372 ns</td><td>1.000</td><td>0.00</td><td>2</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Max ID - Dictionary Keys&#39;</td><td>10000</td><td>26,496.3847 ns</td><td>720.2110 ns</td><td>39.4772 ns</td><td>5.585</td><td>0.01</td><td>3</td><td>-</td><td>NA</td>
+</tr><tr><td>&#39;Max ID - Linear (on objects)&#39;</td><td>10000</td><td>32,312.5224 ns</td><td>15,337.8186 ns</td><td>840.7176 ns</td><td>6.811</td><td>0.15</td><td>4</td><td>40 B</td><td>NA</td>
+</tr></tbody></table>
+</body>
+</html>

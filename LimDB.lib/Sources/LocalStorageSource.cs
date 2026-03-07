@@ -3,8 +3,23 @@ using LimDB.lib.Sources.Base;
 
 namespace LimDB.lib.Sources
 {
-    public class LocalStorageSource(string dbFileName = LibConstants.DefaultDbFileName) : BaseStorageSource(dbFileName)
+    public class LocalStorageSource : BaseStorageSource
     {
+        private static readonly Dictionary<string, SemaphoreSlim> FileLocks = new();
+        private readonly SemaphoreSlim _fileLock;
+
+        public LocalStorageSource(string dbFileName = LibConstants.DefaultDbFileName) : base(dbFileName)
+        {
+            lock (FileLocks)
+            {
+                if (!FileLocks.TryGetValue(dbFileName, out _fileLock!))
+                {
+                    _fileLock = new SemaphoreSlim(1, 1);
+                    FileLocks[dbFileName] = _fileLock;
+                }
+            }
+        }
+
         public override async Task<string> GetDbAsync()
         {
             if (!File.Exists(DbFileName))
@@ -17,9 +32,16 @@ namespace LimDB.lib.Sources
 
         protected override async Task<bool> WriteAsync(string json)
         {
-            await File.WriteAllTextAsync(DbFileName, json);
-
-            return true;
+            await _fileLock.WaitAsync();
+            try
+            {
+                await File.WriteAllTextAsync(DbFileName, json);
+                return true;
+            }
+            finally
+            {
+                _fileLock.Release();
+            }
         }
     }
 }
