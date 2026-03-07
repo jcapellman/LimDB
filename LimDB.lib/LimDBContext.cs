@@ -1,4 +1,6 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+using LimDB.lib.Json;
 using LimDB.lib.Objects.Base;
 using LimDB.lib.Sources;
 using LimDB.lib.Sources.Base;
@@ -7,10 +9,7 @@ namespace LimDB.lib
 {
     public class LimDbContext<T> where T : BaseObject
     {
-        private static readonly JsonSerializerOptions SerializerOptions = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
+        private static JsonTypeInfo<List<T>>? _jsonTypeInfo;
 
         private readonly BaseStorageSource _storageSource;
         private readonly Lock _syncRoot = new();
@@ -55,6 +54,9 @@ namespace LimDB.lib
         /// <returns>LimDbContext</returns>
         public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource)
         {
+            var typeInfo = LimDbJsonContext.Default.GetTypeInfo(typeof(List<T>));
+            _jsonTypeInfo = typeInfo as JsonTypeInfo<List<T>> ?? throw new InvalidOperationException("Could not get JSON type info");
+
             var dbContext = new LimDbContext<T>(storageSource);
             await dbContext.InitializeAsync();
 
@@ -64,7 +66,9 @@ namespace LimDB.lib
         private async Task InitializeAsync()
         {
             var strDb = await _storageSource.GetDbAsync() ?? throw new ArgumentException("Database String was null");
-            var tempDb = JsonSerializer.Deserialize<List<T>>(strDb, SerializerOptions);
+            var tempDb = _jsonTypeInfo != null 
+                ? JsonSerializer.Deserialize(strDb, _jsonTypeInfo)
+                : throw new InvalidOperationException("JSON type info not initialized");
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
             _idIndex = _dbObjects.ToDictionary(obj => obj.Id);
@@ -130,10 +134,21 @@ namespace LimDB.lib
 
                 _dbObjects.Remove(obj);
                 _idIndex.Remove(id);
+
+                if (_dbObjects.Count == 0)
+                {
+                    _maxId = 0;
+                }
+
                 snapshot = [.. _dbObjects];
             }
 
-            return await _storageSource.WriteDbAsync(snapshot);
+            if (_jsonTypeInfo == null)
+            {
+                throw new InvalidOperationException("JSON type info not initialized");
+            }
+
+            return await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
         }
 
         /// <summary>
@@ -153,7 +168,7 @@ namespace LimDB.lib
                     return null;
                 }
 
-                id = _idIndex.Count == 0 ? 1 : _idIndex.Keys.Max() + 1;
+                id = ++_maxId;
 
                 obj.Id = id;
                 obj.Active = true;
@@ -165,7 +180,12 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            var result = await _storageSource.WriteDbAsync(snapshot);
+            if (_jsonTypeInfo == null)
+            {
+                throw new InvalidOperationException("JSON type info not initialized");
+            }
+
+            var result = await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
 
             return result ? id : null;
         }
@@ -197,7 +217,12 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            return await _storageSource.WriteDbAsync(snapshot);
+            if (_jsonTypeInfo == null)
+            {
+                throw new InvalidOperationException("JSON type info not initialized");
+            }
+
+            return await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
         }
     }
 }

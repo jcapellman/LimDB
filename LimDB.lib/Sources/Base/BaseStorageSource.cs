@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using LimDB.lib.Common;
 
 namespace LimDB.lib.Sources.Base
@@ -11,9 +12,9 @@ namespace LimDB.lib.Sources.Base
 
         protected abstract Task<bool> WriteAsync(string json);
 
-        public async Task<bool> WriteDbAsync<T>(List<T> objects)
+        public async Task<bool> WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>> jsonTypeInfo)
         {
-            var json = JsonSerializer.Serialize(objects);
+            var json = JsonSerializer.Serialize(objects, jsonTypeInfo);
 
             return await WriteAsync(json);
         }
