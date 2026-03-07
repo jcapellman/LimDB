@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.9.34728.123
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11520.95 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LimDB.lib", "LimDB.lib\LimDB.lib.csproj", "{BDC43E8C-43C3-446B-8212-36BAEF159491}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LimDB.Tests", "LimDB.Tests\LimDB.Tests.csproj", "{6575338D-D737-46D4-B101-CFDC01B16EF5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LimDB.Benchmarks", "LimDB.Benchmarks\LimDB.Benchmarks.csproj", "{8C409909-B7DD-45F5-8ABE-5E49A6298C4F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LimDB.Example", "LimDB.Example\LimDB.Example.csproj", "{83B9FAE2-E589-62DC-FBE3-16596505A18A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,6 +57,18 @@ Global
 		{8C409909-B7DD-45F5-8ABE-5E49A6298C4F}.Release|x64.Build.0 = Release|Any CPU
 		{8C409909-B7DD-45F5-8ABE-5E49A6298C4F}.Release|x86.ActiveCfg = Release|Any CPU
 		{8C409909-B7DD-45F5-8ABE-5E49A6298C4F}.Release|x86.Build.0 = Release|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Debug|x64.Build.0 = Debug|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Debug|x86.Build.0 = Debug|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Release|x64.ActiveCfg = Release|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Release|x64.Build.0 = Release|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Release|x86.ActiveCfg = Release|Any CPU
+		{83B9FAE2-E589-62DC-FBE3-16596505A18A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
