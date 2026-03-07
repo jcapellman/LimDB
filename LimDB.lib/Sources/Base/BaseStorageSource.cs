@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using LimDB.lib.Common;
@@ -10,34 +9,25 @@ namespace LimDB.lib.Sources.Base
     {
         protected readonly string DbFileName = dbFileName;
 
-        private static readonly JsonSerializerOptions DefaultJsonSerializerOptions = new()
-        {
-            PropertyNameCaseInsensitive = true,
-            WriteIndented = false
-        };
-
         public abstract Task<string> GetDbAsync();
 
         protected abstract Task<bool> WriteAsync(ReadOnlyMemory<byte> jsonBytes);
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
         public async Task<bool> WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>>? jsonTypeInfo)
         {
-            // Use ArrayPool to reduce allocations for large JSON output
+            if (jsonTypeInfo is null)
+            {
+                throw new InvalidOperationException(
+                    $"Type '{typeof(T).Name}' is not registered in LimDbJsonContext for AOT serialization. " +
+                    $"Add [JsonSerializable(typeof(List<{typeof(T).Name}>))] to LimDbJsonContext.cs to enable AOT support.");
+            }
+
             var bufferWriter = new ArrayPoolBufferWriter();
             try
             {
                 using (var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions { Indented = false }))
                 {
-                    if (jsonTypeInfo != null)
-                    {
-                        JsonSerializer.Serialize(writer, objects, jsonTypeInfo);
-                    }
-                    else
-                    {
-                        JsonSerializer.Serialize(writer, objects, DefaultJsonSerializerOptions);
-                    }
+                    JsonSerializer.Serialize(writer, objects, jsonTypeInfo);
                 }
 
                 return await WriteAsync(bufferWriter.WrittenMemory);

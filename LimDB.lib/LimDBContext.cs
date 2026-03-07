@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using LimDB.lib.Json;
 using LimDB.lib.Objects.Base;
@@ -55,11 +56,22 @@ namespace LimDB.lib
         /// <returns>LimDbContext</returns>
         public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource)
         {
-            // Try to get type info from source-generated context first
-            var typeInfo = LimDbJsonContext.Default.GetTypeInfo(typeof(List<T>));
+            return await CreateAsync(storageSource, null);
+        }
+
+        /// <summary>
+        /// Creates a LimDbContext from a custom BaseStorageSource with a custom JsonSerializerContext
+        /// </summary>
+        /// <param name="storageSource">Custom BaseStorageSource</param>
+        /// <param name="jsonContext">Custom JsonSerializerContext for AOT source generation</param>
+        /// <returns>LimDbContext</returns>
+        public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource, JsonSerializerContext? jsonContext)
+        {
+            // Try to get type info from the provided context, or fallback to default LimDbJsonContext
+            var context = jsonContext ?? LimDbJsonContext.Default;
+            var typeInfo = context.GetTypeInfo(typeof(List<T>));
 
             // If the specific type isn't registered in source generation, typeInfo will be null
-            // In that case, we'll use reflection-based serialization as fallback
             if (typeInfo is JsonTypeInfo<List<T>> jsonTypeInfo)
             {
                 _jsonTypeInfo = jsonTypeInfo;
@@ -71,16 +83,18 @@ namespace LimDB.lib
             return dbContext;
         }
 
-        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Fallback to reflection-based JSON serialization when source generation is not available")]
         private async Task InitializeAsync()
         {
             var strDb = await _storageSource.GetDbAsync() ?? throw new ArgumentException("Database String was null");
 
-            // Use source generation if available, otherwise fall back to reflection
-            var tempDb = _jsonTypeInfo != null 
-                ? JsonSerializer.Deserialize(strDb, _jsonTypeInfo)
-                : JsonSerializer.Deserialize<List<T>>(strDb, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (_jsonTypeInfo is null)
+            {
+                throw new InvalidOperationException(
+                    $"Type '{typeof(T).Name}' is not registered in LimDbJsonContext for AOT deserialization. " +
+                    $"Add [JsonSerializable(typeof(List<{typeof(T).Name}>))] to LimDbJsonContext.cs to enable AOT support.");
+            }
+
+            var tempDb = JsonSerializer.Deserialize(strDb, _jsonTypeInfo);
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
             _idIndex = _dbObjects.ToDictionary(obj => obj.Id);

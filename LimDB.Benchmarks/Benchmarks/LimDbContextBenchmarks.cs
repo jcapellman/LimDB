@@ -1,7 +1,9 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
+using LimDB.Benchmarks.Json;
 using LimDB.Benchmarks.Objects;
 using LimDB.lib;
+using LimDB.lib.Sources;
 using System.Text.Json;
 
 namespace LimDB.Benchmarks
@@ -41,7 +43,8 @@ namespace LimDB.Benchmarks
             var json = JsonSerializer.Serialize(posts);
             await File.WriteAllTextAsync(_tempDbFile, json);
 
-            _dbContext = await LimDbContext<BenchmarkPost>.CreateFromLocalStorageSourceAsync(_tempDbFile);
+            var storageSource = new LocalStorageSource(_tempDbFile);
+            _dbContext = await LimDbContext<BenchmarkPost>.CreateAsync(storageSource, BenchmarkJsonContext.Default);
             _existingId = DatabaseSize / 2;
         }
 
