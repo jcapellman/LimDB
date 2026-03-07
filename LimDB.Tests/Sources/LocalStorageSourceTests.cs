@@ -103,7 +103,7 @@ namespace LimDB.Tests.Sources
 
             Assert.IsNotNull(newId);
 
-            Assert.IsTrue(id != newId.Value);
+            Assert.AreNotEqual(id, newId.Value);
         }
 
         [TestMethod]
@@ -180,7 +180,7 @@ namespace LimDB.Tests.Sources
             var firstCall = dbContext.GetMany()?.ToList();
 
             Assert.IsNotNull(firstCall);
-            Assert.IsTrue(firstCall.Count > 0);
+            Assert.IsNotEmpty(firstCall);
 
             firstCall.Clear();
 
