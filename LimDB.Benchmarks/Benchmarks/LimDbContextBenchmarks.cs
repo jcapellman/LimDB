@@ -73,15 +73,15 @@ namespace LimDB.Benchmarks
         }
 
         [Benchmark(Description = "GetMany - No filter")]
-        public IEnumerable<BenchmarkPost>? GetMany_NoFilter()
+        public List<BenchmarkPost>? GetMany_NoFilter()
         {
-            return _dbContext.GetMany();
+            return _dbContext.GetMany()?.ToList();
         }
 
         [Benchmark(Description = "GetMany - With filter")]
-        public IEnumerable<BenchmarkPost>? GetMany_WithFilter()
+        public List<BenchmarkPost>? GetMany_WithFilter()
         {
-            return _dbContext.GetMany(p => p.Category == "Category 5");
+            return _dbContext.GetMany(p => p.Category == "Category 5")?.ToList();
         }
 
         [Benchmark(Description = "GetOne - No filter")]

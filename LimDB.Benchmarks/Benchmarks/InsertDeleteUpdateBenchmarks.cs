@@ -11,14 +11,21 @@ namespace LimDB.Benchmarks
     [RankColumn]
     public class InsertDeleteUpdateBenchmarks
     {
-        private string _tempDbFile = null!;
         private LimDbContext<BenchmarkPost> _dbContext = null!;
         private const int InitialDatabaseSize = 1000;
+        private List<string> _tempFiles = new();
+
+        [GlobalSetup]
+        public void GlobalSetup()
+        {
+            _tempFiles = new List<string>();
+        }
 
         [IterationSetup]
-        public async Task IterationSetup()
+        public void IterationSetup()
         {
-            _tempDbFile = Path.Combine(Path.GetTempPath(), $"LimDb_Benchmark_{Guid.NewGuid()}.json");
+            var tempDbFile = Path.Combine(Path.GetTempPath(), $"LimDb_Benchmark_{Guid.NewGuid()}.json");
+            _tempFiles.Add(tempDbFile);
 
             var posts = new List<BenchmarkPost>();
             for (int i = 1; i <= InitialDatabaseSize; i++)
@@ -38,17 +45,20 @@ namespace LimDB.Benchmarks
             }
 
             var json = JsonSerializer.Serialize(posts);
-            await File.WriteAllTextAsync(_tempDbFile, json);
+            File.WriteAllText(tempDbFile, json);
 
-            _dbContext = await LimDbContext<BenchmarkPost>.CreateFromLocalStorageSourceAsync(_tempDbFile);
+            _dbContext = LimDbContext<BenchmarkPost>.CreateFromLocalStorageSourceAsync(tempDbFile).GetAwaiter().GetResult();
         }
 
-        [IterationCleanup]
-        public void IterationCleanup()
+        [GlobalCleanup]
+        public void GlobalCleanup()
         {
-            if (File.Exists(_tempDbFile))
+            foreach (var file in _tempFiles)
             {
-                File.Delete(_tempDbFile);
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
             }
         }
 

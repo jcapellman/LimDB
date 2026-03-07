@@ -17,6 +17,7 @@ namespace LimDB.lib
 
         private List<T>? _dbObjects;
         private Dictionary<int, T>? _idIndex;
+        private int _maxId;
 
         private LimDbContext(BaseStorageSource storageSource)
         {
@@ -67,6 +68,7 @@ namespace LimDB.lib
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
             _idIndex = _dbObjects.ToDictionary(obj => obj.Id);
+            _maxId = _dbObjects.Count == 0 ? 0 : _dbObjects.Max(obj => obj.Id);
         }
 
         public IEnumerable<T>? GetMany(Func<T, bool>? expression = null)
@@ -179,19 +181,19 @@ namespace LimDB.lib
 
             lock (_syncRoot)
             {
-                if (_dbObjects is null)
+                if (_dbObjects is null || _idIndex is null)
+                {
+                    return false;
+                }
+
+                if (!_idIndex.ContainsKey(obj.Id))
                 {
                     return false;
                 }
 
                 var index = _dbObjects.FindIndex(a => a.Id == obj.Id);
-
-                if (index == -1)
-                {
-                    return false;
-                }
-
                 _dbObjects[index] = obj;
+                _idIndex[obj.Id] = obj;
                 snapshot = [.. _dbObjects];
             }
 
