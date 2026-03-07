@@ -27,7 +27,7 @@ jobs:
     needs: [ run_test ]
     steps:
     - name: Build Version String
-      run: echo "VERSION=2024.4.${{ env.PR_NUMBER }}" >> $env:GITHUB_ENV
+      run: echo "VERSION=2026.3.${{ env.PR_NUMBER }}" >> $env:GITHUB_ENV
     - uses: actions/checkout@v4
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
