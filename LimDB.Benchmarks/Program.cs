@@ -4,11 +4,17 @@ namespace LimDB.Benchmarks
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             if (args.Length > 0 && args[0] == "--quick")
             {
                 QuickMicroBenchmark.Run();
+                return;
+            }
+
+            if (args.Length > 0 && args[0] == "--bool")
+            {
+                await QuickBoolOverheadTest.Run();
                 return;
             }
 

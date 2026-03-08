@@ -11,9 +11,9 @@ namespace LimDB.lib.Sources.Base
 
         public abstract Task<string> GetDbAsync();
 
-        protected abstract Task<bool> WriteAsync(ReadOnlyMemory<byte> jsonBytes);
+        protected abstract Task WriteAsync(ReadOnlyMemory<byte> jsonBytes);
 
-        public async Task<bool> WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>> jsonTypeInfo)
+        public async Task WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>> jsonTypeInfo)
         {
             var bufferWriter = new ArrayPoolBufferWriter();
             try
@@ -23,7 +23,7 @@ namespace LimDB.lib.Sources.Base
                     JsonSerializer.Serialize(writer, objects, jsonTypeInfo);
                 }
 
-                return await WriteAsync(bufferWriter.WrittenMemory);
+                await WriteAsync(bufferWriter.WrittenMemory);
             }
             finally
             {

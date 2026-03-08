@@ -101,9 +101,7 @@ namespace LimDB.Tests.Sources
 
             var newId = await dbContext.InsertAsync(post);
 
-            Assert.IsNotNull(newId);
-
-            Assert.AreNotEqual(id, newId.Value);
+            Assert.AreNotEqual(id, newId);
         }
 
         [TestMethod]
@@ -124,9 +122,7 @@ namespace LimDB.Tests.Sources
 
             var newId = await dbContext.InsertAsync(newPost);
 
-            Assert.IsNotNull(newId);
-
-            var copyPost = dbContext.GetOneById(newId.Value);
+            var copyPost = dbContext.GetOneById(newId);
 
             Assert.IsNotNull(copyPost);
 
@@ -136,7 +132,7 @@ namespace LimDB.Tests.Sources
 
             Assert.IsTrue(result);
 
-            var retPost = dbContext.GetOneById(newId.Value);
+            var retPost = dbContext.GetOneById(newId);
 
             Assert.IsNotNull(retPost);
 
@@ -237,8 +233,7 @@ namespace LimDB.Tests.Sources
 
             var ids = await Task.WhenAll(insertTasks);
 
-            Assert.IsTrue(ids.All(id => id.HasValue));
-            Assert.AreEqual(10, ids.Select(id => id!.Value).Distinct().Count());
+            Assert.AreEqual(10, ids.Distinct().Count());
 
             var reloadContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
             var posts = reloadContext.GetMany();

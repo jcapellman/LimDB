@@ -5,7 +5,7 @@ namespace LimDB.lib.Sources
 {
     public class LocalStorageSource : BaseStorageSource
     {
-        private static readonly Dictionary<string, SemaphoreSlim> FileLocks = new();
+        private static readonly Dictionary<string, SemaphoreSlim> FileLocks = [];
         private readonly SemaphoreSlim _fileLock;
 
         public LocalStorageSource(string dbFileName = LibConstants.DefaultDbFileName) : base(dbFileName)
@@ -30,14 +30,13 @@ namespace LimDB.lib.Sources
             return await File.ReadAllTextAsync(DbFileName);
         }
 
-        protected override async Task<bool> WriteAsync(ReadOnlyMemory<byte> jsonBytes)
+        protected override async Task WriteAsync(ReadOnlyMemory<byte> jsonBytes)
         {
             await _fileLock.WaitAsync();
             try
             {
                 await using var fileStream = new FileStream(DbFileName, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: LibConstants.FileStreamBufferSize, useAsync: true);
                 await fileStream.WriteAsync(jsonBytes);
-                return true;
             }
             finally
             {

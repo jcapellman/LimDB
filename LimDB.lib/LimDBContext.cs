@@ -152,7 +152,8 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            return await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            return true;
         }
 
         /// <summary>
@@ -160,7 +161,7 @@ namespace LimDB.lib
         /// </summary>
         /// <param name="obj">Object to put into the database</param>
         /// <returns>Id of the new Object</returns>
-        public async Task<int?> InsertAsync(T obj)
+        public async Task<int> InsertAsync(T obj)
         {
             List<T> snapshot;
             int id;
@@ -179,9 +180,9 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            var result = await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
 
-            return result ? id : null;
+            return id;
         }
 
         /// <summary>
@@ -206,7 +207,8 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            return await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            return true;
         }
     }
 }

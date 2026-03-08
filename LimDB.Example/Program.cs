@@ -46,7 +46,7 @@ Console.WriteLine();
 
 // READ - Get specific product by ID
 Console.WriteLine($"Get Product by ID ({id1}):");
-var productById = db.GetOneById(id1!.Value);
+var productById = db.GetOneById(id1);
 if (productById != null)
 {
     Console.WriteLine($"  Found: {productById.Name} - ${productById.Price:F2}\n");
@@ -66,7 +66,7 @@ Console.WriteLine();
 
 // UPDATE - Modify a product
 Console.WriteLine("--- UPDATE Operations ---");
-var productToUpdate = db.GetOneById(id2!.Value);
+var productToUpdate = db.GetOneById(id2);
 if (productToUpdate != null)
 {
     Console.WriteLine($"Updating {productToUpdate.Name} price from ${productToUpdate.Price:F2} to $24.99");
@@ -76,13 +76,13 @@ if (productToUpdate != null)
 }
 
 // Verify update
-var updatedProduct = db.GetOneById(id2!.Value);
+var updatedProduct = db.GetOneById(id2);
 Console.WriteLine($"Verified: {updatedProduct?.Name} now costs ${updatedProduct?.Price:F2}\n");
 
 // DELETE - Remove a product
 Console.WriteLine("--- DELETE Operations ---");
 Console.WriteLine($"Deleting product with ID: {id3}");
-var deleteResult = await db.DeleteByIdAsync(id3!.Value);
+var deleteResult = await db.DeleteByIdAsync(id3);
 Console.WriteLine($"Delete successful: {deleteResult}\n");
 
 // Final state
