@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using LimDB.lib;
 using LimDB.lib.Sources;
 using LimDB.Tests.Objects;
+using LimDB.Tests.Json;
 
 namespace LimDB.Tests.Sources
 {
@@ -48,7 +49,7 @@ namespace LimDB.Tests.Sources
         {
             var lss = new LocalStorageSource(_testDbName);
 
-            var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
+            var dbContext = await LimDbContext<Posts>.CreateAsync(lss, TestJsonContext.Default);
 
             var posts = dbContext.GetMany();
 
@@ -74,7 +75,7 @@ namespace LimDB.Tests.Sources
         [TestMethod]
         public async Task WrapperValidFile()
         {
-            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(_testDbName);
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(_testDbName, TestJsonContext.Default);
 
             var posts = dbContext.GetMany();
 
@@ -87,7 +88,7 @@ namespace LimDB.Tests.Sources
         {
             var lss = new LocalStorageSource(_testDbName);
 
-            var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
+            var dbContext = await LimDbContext<Posts>.CreateAsync(lss, TestJsonContext.Default);
 
             var post = dbContext.GetOne();
 
@@ -109,7 +110,7 @@ namespace LimDB.Tests.Sources
         {
             var lss = new LocalStorageSource(_testDbName);
 
-            var dbContext = await LimDbContext<Posts>.CreateAsync(lss);
+            var dbContext = await LimDbContext<Posts>.CreateAsync(lss, TestJsonContext.Default);
 
             var newPost = new Posts
             {
@@ -145,7 +146,7 @@ namespace LimDB.Tests.Sources
         {
             var tempDb = CreateTempDb("[]");
 
-            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb, TestJsonContext.Default);
 
             var post = new Posts
             {
@@ -160,7 +161,7 @@ namespace LimDB.Tests.Sources
 
             Assert.AreEqual(1, newId);
 
-            var reloadContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var reloadContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb, TestJsonContext.Default);
             var storedPost = reloadContext.GetOneById(1);
 
             Assert.IsNotNull(storedPost);
@@ -171,7 +172,7 @@ namespace LimDB.Tests.Sources
         public async Task GetMany_ReturnsCopyOfData()
         {
             var tempDb = CreateTempDb();
-            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb, TestJsonContext.Default);
 
             var firstCall = dbContext.GetMany()?.ToList();
 
@@ -206,7 +207,7 @@ namespace LimDB.Tests.Sources
 """;
 
             var tempDb = CreateTempDb(camelCaseJson);
-            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb, TestJsonContext.Default);
 
             var post = dbContext.GetOne();
 
@@ -218,7 +219,7 @@ namespace LimDB.Tests.Sources
         public async Task InsertAsync_IsThreadSafe()
         {
             var tempDb = CreateTempDb("[]");
-            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb, TestJsonContext.Default);
 
             var insertTasks = Enumerable.Range(0, 10)
                 .Select(i => dbContext.InsertAsync(new Posts
@@ -235,7 +236,7 @@ namespace LimDB.Tests.Sources
 
             Assert.AreEqual(10, ids.Distinct().Count());
 
-            var reloadContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb);
+            var reloadContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb, TestJsonContext.Default);
             var posts = reloadContext.GetMany();
 
             Assert.IsNotNull(posts);
@@ -249,7 +250,7 @@ namespace LimDB.Tests.Sources
 
             try
             {
-                _ = await LimDbContext<Posts>.CreateAsync(lss);
+                _ = await LimDbContext<Posts>.CreateAsync(lss, TestJsonContext.Default);
                 Assert.Fail("Expected FileNotFoundException was not thrown.");
             }
             catch (FileNotFoundException)

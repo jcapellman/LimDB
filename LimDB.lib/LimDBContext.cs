@@ -11,7 +11,8 @@ namespace LimDB.lib
 {
     public class LimDbContext<T> where T : BaseObject
     {
-        private static JsonTypeInfo<List<T>> _jsonTypeInfo = null!;
+        private static JsonTypeInfo<List<T>> _jsonTypeInfoForDeserialization = null!;
+        private static JsonTypeInfo<IReadOnlyList<T>> _jsonTypeInfoForSerialization = null!;
 
         private readonly BaseStorageSource _storageSource;
         private readonly Lock _syncRoot = new();
@@ -38,6 +39,19 @@ namespace LimDB.lib
         }
 
         /// <summary>
+        /// Creates a LimDbContext from an Http Storage Source with a custom JsonSerializerContext
+        /// </summary>
+        /// <param name="url">Full URL to the Database File</param>
+        /// <param name="jsonContext">Custom JsonSerializerContext for AOT source generation</param>
+        /// <returns>LimDbContext</returns>
+        public static async Task<LimDbContext<T>> CreateFromHttpStorageSourceAsync(string url, JsonSerializerContext jsonContext)
+        {
+            var hss = new HttpStorageSource(url);
+
+            return await CreateAsync(hss, jsonContext);
+        }
+
+        /// <summary>
         /// Creates a LimDbContext from a Local Storage Source
         /// </summary>
         /// <param name="dbFileName">Full Path to the Db Filename</param>
@@ -47,6 +61,19 @@ namespace LimDB.lib
             var lss = new LocalStorageSource(dbFileName);
 
             return await CreateAsync(lss);
+        }
+
+        /// <summary>
+        /// Creates a LimDbContext from a Local Storage Source with a custom JsonSerializerContext
+        /// </summary>
+        /// <param name="dbFileName">Full Path to the Db Filename</param>
+        /// <param name="jsonContext">Custom JsonSerializerContext for AOT source generation</param>
+        /// <returns>LimDbContext</returns>
+        public static async Task<LimDbContext<T>> CreateFromLocalStorageSourceAsync(string dbFileName, JsonSerializerContext jsonContext)
+        {
+            var lss = new LocalStorageSource(dbFileName);
+
+            return await CreateAsync(lss, jsonContext);
         }
 
         /// <summary>
@@ -69,17 +96,30 @@ namespace LimDB.lib
         {
             // Try to get type info from the provided context, or fallback to default LimDbJsonContext
             var context = jsonContext ?? LimDbJsonContext.Default;
-            var typeInfo = context.GetTypeInfo(typeof(List<T>));
 
-            // Enforce AOT-only: type must be registered in source generation
-            if (typeInfo is not JsonTypeInfo<List<T>> jsonTypeInfo)
+            var listTypeInfo = context.GetTypeInfo(typeof(List<T>));
+            var readOnlyListTypeInfo = context.GetTypeInfo(typeof(IReadOnlyList<T>));
+
+            // Enforce AOT-only: List<T> must be registered for deserialization
+            if (listTypeInfo is not JsonTypeInfo<List<T>> jsonListTypeInfo)
             {
                 throw new InvalidOperationException(
                     $"Type '{typeof(T).Name}' is not registered for AOT serialization. " +
                     $"Add [JsonSerializable(typeof(List<{typeof(T).Name}>))] to your JsonSerializerContext.");
             }
 
-            _jsonTypeInfo = jsonTypeInfo;
+            _jsonTypeInfoForDeserialization = jsonListTypeInfo;
+
+            // Try to use IReadOnlyList<T> for serialization if available, otherwise fallback to List<T>
+            if (readOnlyListTypeInfo is JsonTypeInfo<IReadOnlyList<T>> jsonReadOnlyListTypeInfo)
+            {
+                _jsonTypeInfoForSerialization = jsonReadOnlyListTypeInfo;
+            }
+            else
+            {
+                // Fallback: Use List<T> for serialization (cast will work since List<T> implements IReadOnlyList<T>)
+                _jsonTypeInfoForSerialization = (JsonTypeInfo<IReadOnlyList<T>>)(object)jsonListTypeInfo;
+            }
 
             var dbContext = new LimDbContext<T>(storageSource);
             await dbContext.InitializeAsync();
@@ -91,8 +131,8 @@ namespace LimDB.lib
         {
             var strDb = await _storageSource.GetDbAsync() ?? throw new ArgumentException("Database String was null");
 
-            // _jsonTypeInfo is guaranteed non-null by CreateAsync contract
-            var tempDb = JsonSerializer.Deserialize(strDb, _jsonTypeInfo);
+            // _jsonTypeInfoForDeserialization is guaranteed non-null by CreateAsync contract
+            var tempDb = JsonSerializer.Deserialize(strDb, _jsonTypeInfoForDeserialization);
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
             _idIndex = _dbObjects.ToDictionary(obj => obj.Id);
@@ -152,7 +192,7 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
             return true;
         }
 
@@ -180,7 +220,7 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
 
             return id;
         }
@@ -207,7 +247,7 @@ namespace LimDB.lib
                 snapshot = [.. _dbObjects];
             }
 
-            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfo);
+            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
             return true;
         }
     }

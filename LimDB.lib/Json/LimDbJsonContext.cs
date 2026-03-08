@@ -5,6 +5,7 @@ namespace LimDB.lib.Json
 {
     [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
     [JsonSerializable(typeof(List<BaseObject>))]
+    [JsonSerializable(typeof(IReadOnlyList<BaseObject>))]
     public partial class LimDbJsonContext : JsonSerializerContext
     {
     }

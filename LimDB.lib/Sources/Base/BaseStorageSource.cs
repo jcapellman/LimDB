@@ -13,7 +13,7 @@ namespace LimDB.lib.Sources.Base
 
         protected abstract Task WriteAsync(ReadOnlyMemory<byte> jsonBytes);
 
-        public async Task WriteDbAsync<T>(List<T> objects, JsonTypeInfo<List<T>> jsonTypeInfo)
+        public async Task WriteDbAsync<T>(IReadOnlyList<T> objects, JsonTypeInfo<IReadOnlyList<T>> jsonTypeInfo)
         {
             var bufferWriter = new ArrayPoolBufferWriter();
             try
