@@ -9,7 +9,14 @@ using LimDB.lib.Sources.Base;
 
 namespace LimDB.lib
 {
-    public class LimDbContext<T> where T : BaseObject
+    /// <summary>
+    /// Thread-safe in-memory database context for CRUD operations.
+    /// Multiple LimDbContext instances can safely access the same file when using LocalStorageSource,
+    /// as file-level locking is implemented per database file.
+    /// All read and write operations are synchronized for concurrent access.
+    /// </summary>
+    /// <typeparam name="T">Entity type that inherits from BaseObject</typeparam>
+    public class LimDbContext<T> : IDisposable where T : BaseObject
     {
         private static JsonTypeInfo<List<T>> _jsonTypeInfoForDeserialization = null!;
         private static JsonTypeInfo<IReadOnlyList<T>> _jsonTypeInfoForSerialization = null!;
@@ -20,6 +27,7 @@ namespace LimDB.lib
         private List<T> _dbObjects = null!;
         private Dictionary<int, T> _idIndex = null!;
         private int _maxId;
+        private bool _disposed;
 
         private LimDbContext(BaseStorageSource storageSource)
         {
@@ -139,8 +147,15 @@ namespace LimDB.lib
             _maxId = _dbObjects.Count == 0 ? 0 : _dbObjects.Max(obj => obj.Id);
         }
 
+        /// <summary>
+        /// Retrieves multiple objects from the database, optionally filtered by an expression.
+        /// This operation is thread-safe.
+        /// </summary>
+        /// <param name="expression">Optional filter expression. If null, returns all objects.</param>
+        /// <returns>Read-only list of objects matching the criteria</returns>
         public IReadOnlyList<T> GetMany(Func<T, bool>? expression = null)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             lock (_syncRoot)
             {
                 var query = expression is null ? _dbObjects : _dbObjects.Where(expression);
@@ -148,16 +163,30 @@ namespace LimDB.lib
             }
         }
 
+        /// <summary>
+        /// Retrieves a single object from the database, optionally filtered by an expression.
+        /// This operation is thread-safe.
+        /// </summary>
+        /// <param name="expression">Optional filter expression. If null, returns the first object.</param>
+        /// <returns>First object matching the criteria, or null if not found</returns>
         public T? GetOne(Func<T, bool>? expression = null)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             lock (_syncRoot)
             {
                 return expression is null ? _dbObjects.FirstOrDefault() : _dbObjects.FirstOrDefault(expression);
             }
         }
 
+        /// <summary>
+        /// Retrieves a single object by its unique identifier.
+        /// This operation is thread-safe and uses O(1) dictionary lookup.
+        /// </summary>
+        /// <param name="id">The unique identifier of the object</param>
+        /// <returns>The object with the specified ID, or null if not found</returns>
         public T? GetOneById(int id)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             lock (_syncRoot)
             {
                 return _idIndex.TryGetValue(id, out var obj) ? obj : null;
@@ -165,13 +194,16 @@ namespace LimDB.lib
         }
 
         /// <summary>
-        /// Deletes an object by the Id
+        /// Deletes an object by the Id.
+        /// This operation is thread-safe and persists changes to storage.
         /// </summary>
         /// <param name="id">id of the object to remove</param>
-        /// <returns>True if successful, false otherwise</returns>
-        /// <exception cref="ArgumentException"></exception>
+        /// <returns>True if successful</returns>
+        /// <exception cref="ArgumentException">Thrown when the specified ID is not found</exception>
+        /// <exception cref="ObjectDisposedException">Thrown if the context has been disposed</exception>
         public async Task<bool> DeleteByIdAsync(int id)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             List<T> snapshot;
 
             lock (_syncRoot)
@@ -197,12 +229,16 @@ namespace LimDB.lib
         }
 
         /// <summary>
-        /// Inserts an object
+        /// Inserts an object into the database.
+        /// The object's Id, Active, Created, and Modified properties are automatically set.
+        /// This operation is thread-safe and persists changes to storage.
         /// </summary>
         /// <param name="obj">Object to put into the database</param>
-        /// <returns>Id of the new Object</returns>
+        /// <returns>Id of the newly inserted object</returns>
+        /// <exception cref="ObjectDisposedException">Thrown if the context has been disposed</exception>
         public async Task<int> InsertAsync(T obj)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             List<T> snapshot;
             int id;
 
@@ -226,12 +262,16 @@ namespace LimDB.lib
         }
 
         /// <summary>
-        /// Updates the object
+        /// Updates an existing object in the database.
+        /// The object's Modified timestamp is automatically updated to the current UTC time.
+        /// This operation is thread-safe and persists changes to storage.
         /// </summary>
         /// <param name="obj">Object to update</param>
-        /// <returns>True if successful, false otherwise</returns>
+        /// <returns>True if successful, false if the object was not found</returns>
+        /// <exception cref="ObjectDisposedException">Thrown if the context has been disposed</exception>
         public async Task<bool> UpdateAsync(T obj)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             List<T> snapshot;
 
             lock (_syncRoot)
@@ -241,6 +281,7 @@ namespace LimDB.lib
                     return false;
                 }
 
+                obj.Modified = DateTime.UtcNow;
                 var index = _dbObjects.IndexOf(existingObj);
                 _dbObjects[index] = obj;
                 _idIndex[obj.Id] = obj;
@@ -249,6 +290,20 @@ namespace LimDB.lib
 
             await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
             return true;
+        }
+
+        /// <summary>
+        /// Disposes the database context and releases resources.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            GC.SuppressFinalize(this);
         }
     }
 }
