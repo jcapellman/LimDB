@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -16,8 +16,8 @@ namespace LimDB.lib
         private readonly BaseStorageSource _storageSource;
         private readonly Lock _syncRoot = new();
 
-        private List<T>? _dbObjects;
-        private Dictionary<int, T>? _idIndex;
+        private List<T> _dbObjects = null!;
+        private Dictionary<int, T> _idIndex = null!;
         private int _maxId;
 
         private LimDbContext(BaseStorageSource storageSource)
@@ -103,11 +103,6 @@ namespace LimDB.lib
         {
             lock (_syncRoot)
             {
-                if (_dbObjects is null)
-                {
-                    return null;
-                }
-
                 var query = expression is null ? _dbObjects : _dbObjects.Where(expression);
                 return [.. query];
             }
@@ -117,11 +112,6 @@ namespace LimDB.lib
         {
             lock (_syncRoot)
             {
-                if (_dbObjects is null)
-                {
-                    return null;
-                }
-
                 return expression is null ? _dbObjects.FirstOrDefault() : _dbObjects.FirstOrDefault(expression);
             }
         }
@@ -130,7 +120,7 @@ namespace LimDB.lib
         {
             lock (_syncRoot)
             {
-                return _idIndex?.TryGetValue(id, out var obj) == true ? obj : null;
+                return _idIndex.TryGetValue(id, out var obj) ? obj : null;
             }
         }
 
@@ -146,11 +136,6 @@ namespace LimDB.lib
 
             lock (_syncRoot)
             {
-                if (_dbObjects is null || _idIndex is null)
-                {
-                    return false;
-                }
-
                 if (!_idIndex.TryGetValue(id, out var obj))
                 {
                     throw new ArgumentException($"{id} was not found");
@@ -182,11 +167,6 @@ namespace LimDB.lib
 
             lock (_syncRoot)
             {
-                if (_dbObjects is null || _idIndex is null)
-                {
-                    return null;
-                }
-
                 id = ++_maxId;
 
                 obj.Id = id;
@@ -215,11 +195,6 @@ namespace LimDB.lib
 
             lock (_syncRoot)
             {
-                if (_dbObjects is null || _idIndex is null)
-                {
-                    return false;
-                }
-
                 if (!_idIndex.TryGetValue(obj.Id, out var existingObj))
                 {
                     return false;
