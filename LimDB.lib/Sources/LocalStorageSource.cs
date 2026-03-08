@@ -4,15 +4,10 @@ using LimDB.lib.Sources.Base;
 
 namespace LimDB.lib.Sources
 {
-    public class LocalStorageSource : BaseStorageSource
+    public class LocalStorageSource(string dbFileName = LibConstants.DefaultDbFileName) : BaseStorageSource(dbFileName)
     {
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> FileLocks = new();
-        private readonly SemaphoreSlim _fileLock;
-
-        public LocalStorageSource(string dbFileName = LibConstants.DefaultDbFileName) : base(dbFileName)
-        {
-            _fileLock = FileLocks.GetOrAdd(dbFileName, _ => new SemaphoreSlim(1, 1));
-        }
+        private readonly SemaphoreSlim _fileLock = FileLocks.GetOrAdd(dbFileName, _ => new SemaphoreSlim(1, 1));
 
         public override async Task<string> GetDbAsync()
         {
