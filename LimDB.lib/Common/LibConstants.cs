@@ -10,5 +10,8 @@
 
         // File I/O Buffer Size
         public const int FileStreamBufferSize = 81920; // 80 KB
+
+        // Write Batching
+        public const int DefaultBatchSize = 1; // Immediate flush (no batching)
     }
 }

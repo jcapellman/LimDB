@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using LimDB.lib.Common;
 using LimDB.lib.Json;
 using LimDB.lib.Objects.Base;
 using LimDB.lib.Sources;
@@ -23,15 +24,18 @@ namespace LimDB.lib
 
         private readonly BaseStorageSource _storageSource;
         private readonly Lock _syncRoot = new();
+        private readonly int _batchSize;
 
         private List<T> _dbObjects = null!;
         private Dictionary<int, T> _idIndex = null!;
         private int _maxId;
+        private int _pendingWrites;
         private bool _disposed;
 
-        private LimDbContext(BaseStorageSource storageSource)
+        private LimDbContext(BaseStorageSource storageSource, int batchSize = LibConstants.DefaultBatchSize)
         {
             _storageSource = storageSource;
+            _batchSize = batchSize;
         }
 
         /// <summary>
@@ -88,10 +92,11 @@ namespace LimDB.lib
         /// Creates a LimDbContext from a custom BaseStorageSource - if you're just using Http or Local, use the wrappers
         /// </summary>
         /// <param name="storageSource">Custom BaseStorageSource</param>
+        /// <param name="batchSize">Number of write operations to buffer before auto-flushing (default: 1 = immediate writes)</param>
         /// <returns>LimDbContext</returns>
-        public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource)
+        public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource, int batchSize = LibConstants.DefaultBatchSize)
         {
-            return await CreateAsync(storageSource, null);
+            return await CreateAsync(storageSource, null, batchSize);
         }
 
         /// <summary>
@@ -99,8 +104,9 @@ namespace LimDB.lib
         /// </summary>
         /// <param name="storageSource">Custom BaseStorageSource</param>
         /// <param name="jsonContext">Custom JsonSerializerContext for AOT source generation</param>
+        /// <param name="batchSize">Number of write operations to buffer before auto-flushing (default: 1 = immediate writes)</param>
         /// <returns>LimDbContext</returns>
-        public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource, JsonSerializerContext? jsonContext)
+        public static async Task<LimDbContext<T>> CreateAsync(BaseStorageSource storageSource, JsonSerializerContext? jsonContext, int batchSize = LibConstants.DefaultBatchSize)
         {
             // Try to get type info from the provided context, or fallback to default LimDbJsonContext
             var context = jsonContext ?? LimDbJsonContext.Default;
@@ -129,7 +135,7 @@ namespace LimDB.lib
                 _jsonTypeInfoForSerialization = (JsonTypeInfo<IReadOnlyList<T>>)(object)jsonListTypeInfo;
             }
 
-            var dbContext = new LimDbContext<T>(storageSource);
+            var dbContext = new LimDbContext<T>(storageSource, batchSize);
             await dbContext.InitializeAsync();
 
             return dbContext;
@@ -204,6 +210,7 @@ namespace LimDB.lib
         public async Task<bool> DeleteByIdAsync(int id)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            bool shouldFlush;
             List<T> snapshot;
 
             lock (_syncRoot)
@@ -221,10 +228,16 @@ namespace LimDB.lib
                     _maxId = 0;
                 }
 
-                snapshot = [.. _dbObjects];
+                _pendingWrites++;
+                shouldFlush = _pendingWrites >= _batchSize;
+                snapshot = shouldFlush ? [.. _dbObjects] : null!;
             }
 
-            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
+            if (shouldFlush)
+            {
+                await FlushInternalAsync(snapshot);
+            }
+
             return true;
         }
 
@@ -239,6 +252,7 @@ namespace LimDB.lib
         public async Task<int> InsertAsync(T obj)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            bool shouldFlush;
             List<T> snapshot;
             int id;
 
@@ -253,10 +267,16 @@ namespace LimDB.lib
 
                 _dbObjects.Add(obj);
                 _idIndex[id] = obj;
-                snapshot = [.. _dbObjects];
+
+                _pendingWrites++;
+                shouldFlush = _pendingWrites >= _batchSize;
+                snapshot = shouldFlush ? [.. _dbObjects] : null!;
             }
 
-            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
+            if (shouldFlush)
+            {
+                await FlushInternalAsync(snapshot);
+            }
 
             return id;
         }
@@ -272,6 +292,7 @@ namespace LimDB.lib
         public async Task<bool> UpdateAsync(T obj)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            bool shouldFlush;
             List<T> snapshot;
 
             lock (_syncRoot)
@@ -285,11 +306,66 @@ namespace LimDB.lib
                 var index = _dbObjects.IndexOf(existingObj);
                 _dbObjects[index] = obj;
                 _idIndex[obj.Id] = obj;
+
+                _pendingWrites++;
+                shouldFlush = _pendingWrites >= _batchSize;
+                snapshot = shouldFlush ? [.. _dbObjects] : null!;
+            }
+
+            if (shouldFlush)
+            {
+                await FlushInternalAsync(snapshot);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Flushes any pending write operations to storage.
+        /// Call this method to ensure all buffered changes are persisted.
+        /// </summary>
+        /// <returns>True if there were pending writes that were flushed, false if no pending writes</returns>
+        public async Task<bool> FlushAsync()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            List<T> snapshot;
+
+            lock (_syncRoot)
+            {
+                if (_pendingWrites == 0)
+                {
+                    return false;
+                }
+
                 snapshot = [.. _dbObjects];
             }
 
-            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
+            await FlushInternalAsync(snapshot);
             return true;
+        }
+
+        /// <summary>
+        /// Gets the number of pending write operations that haven't been flushed to storage.
+        /// </summary>
+        public int PendingWrites
+        {
+            get
+            {
+                lock (_syncRoot)
+                {
+                    return _pendingWrites;
+                }
+            }
+        }
+
+        private async Task FlushInternalAsync(List<T> snapshot)
+        {
+            await _storageSource.WriteDbAsync(snapshot, _jsonTypeInfoForSerialization);
+
+            lock (_syncRoot)
+            {
+                _pendingWrites = 0;
+            }
         }
 
         /// <summary>
