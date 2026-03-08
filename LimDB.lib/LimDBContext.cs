@@ -139,7 +139,7 @@ namespace LimDB.lib
             _maxId = _dbObjects.Count == 0 ? 0 : _dbObjects.Max(obj => obj.Id);
         }
 
-        public IEnumerable<T>? GetMany(Func<T, bool>? expression = null)
+        public IReadOnlyList<T> GetMany(Func<T, bool>? expression = null)
         {
             lock (_syncRoot)
             {

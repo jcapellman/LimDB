@@ -174,7 +174,7 @@ namespace LimDB.Tests.Sources
             var tempDb = CreateTempDb();
             var dbContext = await LimDbContext<Posts>.CreateFromLocalStorageSourceAsync(tempDb, TestJsonContext.Default);
 
-            var firstCall = dbContext.GetMany()?.ToList();
+            var firstCall = dbContext.GetMany().ToList();
 
             Assert.IsNotNull(firstCall);
             Assert.IsNotEmpty(firstCall);
