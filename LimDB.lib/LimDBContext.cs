@@ -28,6 +28,7 @@ namespace LimDB.lib
 
         private List<T> _dbObjects = null!;
         private Dictionary<int, T> _idIndex = null!;
+        private Dictionary<int, int> _positionIndex = null!;
         private int _maxId;
         private int _pendingWrites;
         private bool _disposed;
@@ -149,8 +150,23 @@ namespace LimDB.lib
             var tempDb = JsonSerializer.Deserialize(strDb, _jsonTypeInfoForDeserialization);
 
             _dbObjects = tempDb ?? throw new ArgumentException("Db was null or empty");
-            _idIndex = _dbObjects.ToDictionary(obj => obj.Id);
-            _maxId = _dbObjects.Count == 0 ? 0 : _dbObjects.Max(obj => obj.Id);
+
+            // Single-pass initialization: build indexes and find max ID together
+            _idIndex = new Dictionary<int, T>(_dbObjects.Count);
+            _positionIndex = new Dictionary<int, int>(_dbObjects.Count);
+            _maxId = 0;
+
+            for (var i = 0; i < _dbObjects.Count; i++)
+            {
+                var obj = _dbObjects[i];
+                _idIndex[obj.Id] = obj;
+                _positionIndex[obj.Id] = i;
+
+                if (obj.Id > _maxId)
+                {
+                    _maxId = obj.Id;
+                }
+            }
         }
 
         /// <summary>
@@ -220,8 +236,20 @@ namespace LimDB.lib
                     throw new ArgumentException($"{id} was not found");
                 }
 
-                _dbObjects.Remove(obj);
+                // O(1) swap-remove: swap with last element, then remove from end
+                var index = _positionIndex[id];
+                var lastIndex = _dbObjects.Count - 1;
+
+                if (index != lastIndex)
+                {
+                    var lastObj = _dbObjects[lastIndex];
+                    _dbObjects[index] = lastObj;
+                    _positionIndex[lastObj.Id] = index;
+                }
+
+                _dbObjects.RemoveAt(lastIndex);
                 _idIndex.Remove(id);
+                _positionIndex.Remove(id);
 
                 if (_dbObjects.Count == 0)
                 {
@@ -265,6 +293,7 @@ namespace LimDB.lib
                 obj.Created = DateTime.UtcNow;
                 obj.Modified = DateTime.UtcNow;
 
+                _positionIndex[id] = _dbObjects.Count;
                 _dbObjects.Add(obj);
                 _idIndex[id] = obj;
 
@@ -297,14 +326,13 @@ namespace LimDB.lib
 
             lock (_syncRoot)
             {
-                if (!_idIndex.TryGetValue(obj.Id, out var existingObj))
+                if (!_idIndex.TryGetValue(obj.Id, out _))
                 {
                     return false;
                 }
 
                 obj.Modified = DateTime.UtcNow;
-                var index = _dbObjects.IndexOf(existingObj);
-                _dbObjects[index] = obj;
+                _dbObjects[_positionIndex[obj.Id]] = obj;
                 _idIndex[obj.Id] = obj;
 
                 _pendingWrites++;
